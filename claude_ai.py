@@ -1,6 +1,6 @@
 """
-Claude AI integration
-Handles free-text questions intelligently in English and Luganda
+Google Gemini AI integration (FREE)
+Replaces Claude API - works the same way
 """
 
 import os
@@ -9,10 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-SYSTEM_PROMPT = """
-You are a friendly WhatsApp assistant for DevUG, a software development company in Kampala, Uganda.
+SYSTEM_PROMPT = """You are a friendly WhatsApp assistant for DevUG, a software development company in Kampala, Uganda.
 
 The company offers:
 - Website development (from UGX 500,000)
@@ -32,51 +31,50 @@ Rules:
 - If asked something you don't know say to contact the team directly
 - If the user writes in Luganda reply in Luganda
 - If the user writes in English reply in English
-- Always end by offering to help further or suggesting they reply with a number from the menu
+- Always end by offering to help further
 - Never make up information about the company
-- Payment accepted via MTN Mobile Money, Airtel Money, bank transfer
-"""
+- Payment accepted via MTN Mobile Money, Airtel Money, bank transfer"""
 
 
 def get_ai_response(user_message, lang="en"):
-    """Get intelligent response from Claude API"""
+    """Get intelligent response from Google Gemini API (Free)"""
 
-    if not ANTHROPIC_API_KEY:
+    if not GEMINI_API_KEY:
         if lang == "lg":
             return "Nkwetaagisa obuyambi. Yita ku +256 700 000000 oba ddamu *menu*."
-        return "I need to connect you with our team. Call +256 700 000000 or reply *menu*."
+        return "Let me connect you with our team. Call +256 700 000000 or reply *menu*."
 
     try:
-        headers = {
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+        headers = {"Content-Type": "application/json"}
 
         payload = {
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 300,
-            "system": SYSTEM_PROMPT,
-            "messages": [
-                {"role": "user", "content": user_message}
-            ]
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": f"{SYSTEM_PROMPT}\n\nUser message: {user_message}"
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "maxOutputTokens": 300,
+                "temperature": 0.7
+            }
         }
 
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=payload,
-            timeout=15
-        )
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
 
         if response.status_code == 200:
             data = response.json()
-            return data["content"][0]["text"]
+            return data["candidates"][0]["content"]["parts"][0]["text"]
         else:
-            raise Exception(f"API error: {response.status_code}")
+            raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
 
     except Exception as e:
-        print(f"Claude API error: {e}")
+        print(f"Gemini API error: {e}")
         if lang == "lg":
             return "Nkwetaagisa obuyambi. Yita ku +256 700 000000."
         return "Let me connect you with our team. Call +256 700 000000 or WhatsApp us directly."
